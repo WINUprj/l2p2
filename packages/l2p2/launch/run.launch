@@ -1,3 +1,14 @@
 <launch>
-    <!-- Include all the nodes here. -->
+    <node
+        pkg="l2p2"
+        type="drive.py"
+        name="drive"
+        output="screen"
+    />
+    <node
+        pkg="l2p2"
+        type="odometry.py"
+        name="odometry"
+        output="screen"
+    />
 </launch>
