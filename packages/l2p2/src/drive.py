@@ -47,7 +47,7 @@ class DriverNode(DTROS):
         self.delta_dist_right = rospy.Subscriber(
             f"{self._veh}/odometry_node/right_wheel_delta",
             Float32,
-            self.param_update,
+            self.cb_param_update,
             callback_args="right"
         )
         self.sub_executed_cmd = rospy.Subscriber(
@@ -57,11 +57,32 @@ class DriverNode(DTROS):
         )
     
     def reset_variables(self):
+        """Reset all tracking variables to 0.
+        
+        Arguments
+        ---------
+        None
+        
+        Returns
+        -------
+        None
+        """
         self.total_distance = 0.0
         self.left_distance = 0.0
         self.right_distance = 0.0
 
-    def param_update(self, msg, wheel):
+    def cb_param_update(self, msg, wheel):
+        """Update distance parameters based on the subscriber's feedback.
+        
+        Arguments
+        ---------
+        msg: Float32
+            Change of distance on either wheel.
+        wheel: str
+            Indicator of which wheel has been called. ["left", "right"]
+        """
+        assert wheel in ["left", "right"]
+
         if wheel == "right":
             self.right_distance += msg.data
             self.total_distance = (self.left_distance + self.right_distance) / 2.
@@ -70,13 +91,26 @@ class DriverNode(DTROS):
             self.left_distance += msg.data
     
     def cb_executed_commands(self, msg):
-        if self.prev_msg == None:
-            self.vel_changed = True
-        elif self.prev_msg.vel_left != msg.vel_left and\
-            self.prev_msg.vel_right != msg.vel_right:
+        """Change state of flag `vel_changed` to True when executed wheel command
+            is different from previous one.
+        
+        Arguments
+        ---------
+        msg: WheelsCmdStamped
+            Input velocity received from executed commands topic.
+        """
+        if (self.prev_msg == None) or \
+            (self.prev_msg.vel_left != msg.vel_left and self.prev_msg.vel_right != msg.vel_right):
             self.vel_changed = True
     
     def send_msg(self, msg):
+        """Send the message indicating velocity to suitable topic.
+        
+        Arguments
+        ---------
+        msg: WheelsCmdStamped
+            Velocity message that we are feeding into a topic.
+        """
         while not self.vel_changed:
             # Send until it is received
             self.pub_vel.publish(msg)
@@ -87,6 +121,7 @@ class DriverNode(DTROS):
         self.vel_changed = False
 
     def stop(self):
+        """Method to stop the robot's movement."""
         msg = WheelsCmdStamped()
         msg.header.stamp = rospy.Time.now()
         msg.vel_left = 0.0
@@ -95,6 +130,17 @@ class DriverNode(DTROS):
         self.send_msg(msg)
 
     def straight(self, distance, vel_left=0.4, vel_right=0.4):
+        """Method to move the robot in straight line for desired distance.
+        
+        Arguments
+        ---------
+        distance: float
+            Desired distance for robot to move straight. In meters.
+        vel_left: float
+            Velocity of left wheel.
+        vel_right: float
+            Velocity of right wheel.
+        """
         assert (vel_left > 0.0 and vel_right > 0.0) or (vel_left < 0.0 and vel_right < 0.0)
         
         # Reset the variables
@@ -117,6 +163,17 @@ class DriverNode(DTROS):
         self.stop()
 
     def rotate(self, angle, vel_left=-0.4, vel_right=0.4):
+        """Method to rotate the robot for desired angles.
+
+        Arguments
+        ---------
+        angle: float
+            Desired angle for robot to rotate. In radian.
+        vel_left: float
+            Velocity of left wheel.
+        vel_right: float
+            Velocity of right wheel.
+        """
         # Reset the variables
         self.reset_variables()
         
