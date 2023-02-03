@@ -58,7 +58,7 @@ class OdometryNode(DTROS):
             Float32,
             queue_size=10
         )
-
+    
     def cb_encoder_data(self, msg, wheel):
         """Get the encoder data and publish the delta of distance."""
         # Set the base value of tick

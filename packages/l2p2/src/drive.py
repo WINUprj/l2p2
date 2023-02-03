@@ -41,7 +41,7 @@ class DriverNode(DTROS):
         self.delta_dist_left = rospy.Subscriber(
             f"{self._veh}/odometry_node/left_wheel_delta",
             Float32,
-            self.param_update,
+            self.cb_param_update,
             callback_args="left"
         )
         self.delta_dist_right = rospy.Subscriber(
@@ -82,7 +82,7 @@ class DriverNode(DTROS):
             Indicator of which wheel has been called. ["left", "right"]
         """
         assert wheel in ["left", "right"]
-
+        # print(wheel, msg.data)
         if wheel == "right":
             self.right_distance += msg.data
             self.total_distance = (self.left_distance + self.right_distance) / 2.
@@ -164,7 +164,6 @@ class DriverNode(DTROS):
 
     def rotate(self, angle, vel_left=-0.4, vel_right=0.4):
         """Method to rotate the robot for desired angles.
-
         Arguments
         ---------
         angle: float
@@ -189,6 +188,7 @@ class DriverNode(DTROS):
         # Move until angle reaches to `angle`
         while True:
             ang = abs(self.average_distance) / self._robot_width_half
+            print(ang)
             if ang >= angle:
                 break
         
@@ -201,13 +201,13 @@ if __name__ == "__main__":
 
     ### Lab 2 Part 1
     # Straight line task
-    driver.straight(1.25, 0.6, 0.6)
-    time.sleep(5)
-    driver.straight(1.25, 0.6, 0.6)
-    time.sleep(5)
+    # driver.straight(1.25, 0.6, 0.6)
+    # time.sleep(5)
+    # driver.straight(1.25, 0.6, 0.6)
+    # time.sleep(5)
 
     # Roatation task
-    # driver.rotate(pi/2, 0.4, -0.4)
+    driver.rotate(pi/2, 0.4, -0.4)
     
     ### Lab 2 Part 2
     # TODO: ROS service to light the LED
