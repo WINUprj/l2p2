@@ -22,17 +22,22 @@ class DriverNode(DTROS):
 
         # Values to keep track on
         self.total_distance = 0.0   # Total distance progressed by robot
-        self.average_distance = 0.0     # Average absolute distance progressed by each wheel
+        # self.average_distance = 0.0     # Average absolute distance progressed by each wheel
+        self.total_ang = 0.0
         self.left_distance = 0.0    # Total distance progressed by left wheel
         self.right_distance = 0.0   # Total distance progressed by right wheel
         self.is_rot = False     # Whether robot is going to perform rotation or not
-        self.vel_changed = False    # Flag to indicate the changes in velocity
 
         self.prev_msg = None        
         
         # Publisher
         self.pub_vel = rospy.Publisher(
             f"{self._veh}/wheels_driver_node/wheels_cmd",
+            WheelsCmdStamped,
+            queue_size=10
+        )
+        self.pub_executed_cmd = rospy.Publisher(
+            f"/{self._veh}/wheels_driver_node/wheels_cmd_executed",
             WheelsCmdStamped,
             queue_size=10
         )
@@ -50,11 +55,6 @@ class DriverNode(DTROS):
             self.cb_param_update,
             callback_args="right"
         )
-        self.sub_executed_cmd = rospy.Subscriber(
-            f"/{self._veh}/wheels_driver_node/wheels_cmd_executed",
-            WheelsCmdStamped,
-            self.cb_executed_commands
-        )
     
     def reset_variables(self):
         """Reset all tracking variables to 0.
@@ -70,6 +70,7 @@ class DriverNode(DTROS):
         self.total_distance = 0.0
         self.left_distance = 0.0
         self.right_distance = 0.0
+        self.total_ang = 0.0
 
     def cb_param_update(self, msg, wheel):
         """Update distance parameters based on the subscriber's feedback.
@@ -82,26 +83,13 @@ class DriverNode(DTROS):
             Indicator of which wheel has been called. ["left", "right"]
         """
         assert wheel in ["left", "right"]
-        # print(wheel, msg.data)
+
         if wheel == "right":
             self.right_distance += msg.data
             self.total_distance = (self.left_distance + self.right_distance) / 2.
-            self.average_distance = (self.left_distance - self.right_distance) / 2.
+            self.total_ang = (abs(self.left_distance) + abs(self.right_distance)) / (2 * self._robot_width_half)
         else:
             self.left_distance += msg.data
-    
-    def cb_executed_commands(self, msg):
-        """Change state of flag `vel_changed` to True when executed wheel command
-            is different from previous one.
-        
-        Arguments
-        ---------
-        msg: WheelsCmdStamped
-            Input velocity received from executed commands topic.
-        """
-        if (self.prev_msg == None) or \
-            (self.prev_msg.vel_left != msg.vel_left and self.prev_msg.vel_right != msg.vel_right):
-            self.vel_changed = True
     
     def send_msg(self, msg):
         """Send the message indicating velocity to suitable topic.
@@ -111,14 +99,8 @@ class DriverNode(DTROS):
         msg: WheelsCmdStamped
             Velocity message that we are feeding into a topic.
         """
-        while not self.vel_changed:
-            # Send until it is received
-            self.pub_vel.publish(msg)
-            self._rate.sleep()
-        
-        self.prev_msg = msg
-        # Switch back to original flag
-        self.vel_changed = False
+        self.pub_vel.publish(msg)
+        self.pub_executed_cmd.publish(msg)
 
     def stop(self):
         """Method to stop the robot's movement."""
@@ -186,11 +168,8 @@ class DriverNode(DTROS):
         self.send_msg(msg)
 
         # Move until angle reaches to `angle`
-        while True:
-            ang = abs(self.average_distance) / self._robot_width_half
-            print(ang)
-            if ang >= angle:
-                break
+        while self.total_ang < angle:
+            continue
         
         self.stop()
 
@@ -202,12 +181,14 @@ if __name__ == "__main__":
     ### Lab 2 Part 1
     # Straight line task
     # driver.straight(1.25, 0.6, 0.6)
-    # time.sleep(5)
-    # driver.straight(1.25, 0.6, 0.6)
+    # time.sleep(2)
+    # driver.straight(1.25, -0.6, -0.6)
     # time.sleep(5)
 
     # Roatation task
-    driver.rotate(pi/2, 0.4, -0.4)
+    # driver.stop()
+    time.sleep(2)
+    driver.rotate(math.pi/2, 0.6, -0.6)
     
     ### Lab 2 Part 2
     # TODO: ROS service to light the LED
