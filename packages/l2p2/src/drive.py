@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+
+"""
+TODO: Shutdown nodes (send shutdown request to odometry node).
+"""
+
 import math
 import os
 import time
@@ -17,7 +22,7 @@ class DriverNode(DTROS):
         
         # Static variables
         self._veh = os.environ["VEHICLE_NAME"]
-        self._rate = rospy.Rate(1)
+        self._rate = rospy.Rate(100)
         self._robot_width_half = 0.05
 
         # Values to keep track on
@@ -111,7 +116,7 @@ class DriverNode(DTROS):
 
         self.send_msg(msg)
 
-    def straight(self, distance, vel_left=0.4, vel_right=0.4):
+    def straight(self, distance, vel_left=0.4, vel_right=0.4, offset=0):
         """Method to move the robot in straight line for desired distance.
         
         Arguments
@@ -130,21 +135,20 @@ class DriverNode(DTROS):
         
         # Construct message
         msg = WheelsCmdStamped()
-        msg.header.stamp = rospy.Time.now()
+        # msg.header.stamp = rospy.Time.now()
         msg.vel_left = vel_left
         msg.vel_right = vel_right
         
-        # Send a message
-        self.send_msg(msg)
-        
         # Move until distance reaches `distance`
-        while abs(self.total_distance) < abs(distance):
-            continue
+        while abs(self.total_distance) < abs(distance) - offset:
+            msg.header.stamp = rospy.Time.now()
+            self.send_msg(msg)
+            self._rate.sleep()
         
         # Stop after reaching
         self.stop()
 
-    def rotate(self, angle, vel_left=-0.4, vel_right=0.4):
+    def rotate(self, angle, vel_left=-0.4, vel_right=0.4, offset=0):
         """Method to rotate the robot for desired angles.
         Arguments
         ---------
@@ -160,35 +164,36 @@ class DriverNode(DTROS):
         
         # Construct message
         msg = WheelsCmdStamped()
-        msg.header.stamp = rospy.Time.now()
+        # msg.header.stamp = rospy.Time.now()
         msg.vel_left = vel_left
         msg.vel_right = vel_right
-
-        # Send message created
         self.send_msg(msg)
+        # print(self.total_ang)
 
         # Move until angle reaches to `angle`
-        while self.total_ang < angle:
-            continue
-        
+        while self.total_ang < angle - offset:
+            msg.header.stamp = rospy.Time.now()
+            self.send_msg(msg)
+            print(self.total_ang)
+            self._rate.sleep()
+
         self.stop()
 
 
 if __name__ == "__main__":
     # Initialize driver node
     driver = DriverNode("driver_node")
-
     ### Lab 2 Part 1
     # Straight line task
-    # driver.straight(1.25, 0.6, 0.6)
+    # driver.straight(0.4, 0.6, 0.6)
     # time.sleep(2)
-    # driver.straight(1.25, -0.6, -0.6)
+    # driver.straight(0.4, -0.6, -0.6)
     # time.sleep(5)
 
     # Roatation task
     # driver.stop()
-    time.sleep(2)
-    driver.rotate(math.pi/2, 0.6, -0.6)
+    # time.sleep(2)
+    # driver.rotate(math.pi/2, 0.6, -0.6)
     
     ### Lab 2 Part 2
     # TODO: ROS service to light the LED
@@ -215,10 +220,14 @@ if __name__ == "__main__":
     # # State 1.
     # time.sleep(5)
     
-    # # State 4.
-    # driver.rotate(math.pi/2, 0.4, -0.4)
-    # for i in range(4):
-    #     driver.straight(1.25, 0.4, 0.4)
-    #     if i < 3:
-    #         driver.rotate(math.pi/2, -0.4, 0.4)
-    # driver.rotate(math.pi, -0.4, 0.4)
+    # State 4.
+    # driver.straight(1.25, 0.6, 0.6)
+    driver.rotate(math.pi/2, 0.55, -0.55, math.pi/2*0.2)
+    time.sleep(2)
+    for i in range(4):
+        driver.straight(1.25, 0.6, 0.6)
+        time.sleep(2)
+        if i < 3:
+            driver.rotate(math.pi/2, -0.55, 0.55, math.pi/2*0.2)
+            time.sleep(2)
+    driver.rotate(math.pi, -0.55, 0.55)
