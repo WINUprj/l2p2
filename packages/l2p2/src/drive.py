@@ -96,7 +96,6 @@ class DriverNode(DTROS):
         msg = String()
         msg.data = pattern
         self.srv_led(msg)
-        time.sleep(1)
 
     def get_inv_rot_matrix(self, theta):
         return np.array([[np.cos(theta), -np.sin(theta), 0],
