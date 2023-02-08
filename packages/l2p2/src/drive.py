@@ -7,10 +7,14 @@ TODO: Shutdown nodes (send shutdown request to odometry node).
 import math
 import os
 import time
+
+import numpy as np
 import rospy
+from std_msgs.msg import Float32, String
+
 from duckietown.dtros import DTROS, NodeType
 from duckietown_msgs.msg import WheelsCmdStamped
-from std_msgs.msg import Float32
+from duckietown_msgs.srv import ChangePattern
 
 
 class DriverNode(DTROS):
@@ -32,9 +36,20 @@ class DriverNode(DTROS):
         self.left_distance = 0.0    # Total distance progressed by left wheel
         self.right_distance = 0.0   # Total distance progressed by right wheel
         self.is_rot = False     # Whether robot is going to perform rotation or not
-
-        self.prev_msg = None        
         
+        # Initial robot frame and world frame
+        self.rf = np.zeros((3, 1))
+        self.wf = np.zeros((3, 1))
+        self.wf[:2, 0] = 0.32
+
+        # Service client
+        rospy.wait_for_service(f"/{self._veh}/led_emitter_node/set_custom_pattern")
+        
+        self.srv_led = rospy.ServiceProxy(
+            f"/{self._veh}/led_emitter_node/set_pattern",
+            ChangePattern
+        )
+
         # Publisher
         self.pub_vel = rospy.Publisher(
             f"{self._veh}/wheels_driver_node/wheels_cmd",
@@ -76,6 +91,21 @@ class DriverNode(DTROS):
         self.left_distance = 0.0
         self.right_distance = 0.0
         self.total_ang = 0.0
+
+    def set_led_color(self, pattern):
+        msg = String()
+        msg.data = pattern
+        self.srv_led(msg)
+        time.sleep(1)
+
+    def get_inv_rot_matrix(self, theta):
+        return np.array([[np.cos(theta), -np.sin(theta), 0],
+                         [np.sin(theta), np.cos(theta), 0],
+                         [0, 0, 1]])
+        
+    def to_world_frame(self, theta):
+        """Convert robot frame to world frame."""
+        self.wf = self.get_inv_rot_matrix(theta) * self.rf
 
     def cb_param_update(self, msg, wheel):
         """Update distance parameters based on the subscriber's feedback.
@@ -135,7 +165,7 @@ class DriverNode(DTROS):
         
         # Construct message
         msg = WheelsCmdStamped()
-        # msg.header.stamp = rospy.Time.now()
+        msg.header.stamp = rospy.Time.now()
         msg.vel_left = vel_left
         msg.vel_right = vel_right
         
@@ -164,7 +194,7 @@ class DriverNode(DTROS):
         
         # Construct message
         msg = WheelsCmdStamped()
-        # msg.header.stamp = rospy.Time.now()
+        msg.header.stamp = rospy.Time.now()
         msg.vel_left = vel_left
         msg.vel_right = vel_right
         self.send_msg(msg)
@@ -183,6 +213,11 @@ class DriverNode(DTROS):
 if __name__ == "__main__":
     # Initialize driver node
     driver = DriverNode("driver_node")
+    # Initialize service proxy
+
+    # driver.set_led_color("RED")
+    
+
     ### Lab 2 Part 1
     # Straight line task
     # driver.straight(0.4, 0.6, 0.6)
@@ -221,13 +256,24 @@ if __name__ == "__main__":
     # time.sleep(5)
     
     # State 4.
-    # driver.straight(1.25, 0.6, 0.6)
-    driver.rotate(math.pi/2, 0.55, -0.55, math.pi/2*0.2)
+    # driver.straight(0.3, 0.6, 0.6)
+    driver.set_led_color("LIGHT_OFF")
     time.sleep(2)
+    driver.set_led_color("GREEN")
+    driver.rotate(math.pi/2, 0.55, -0.55, math.pi/2*0.2)
+    driver.set_led_color("RED")
+    time.sleep(5)
     for i in range(4):
-        driver.straight(1.25, 0.6, 0.6)
-        time.sleep(2)
+        driver.set_led_color("BLUE")
+        driver.straight(1, 0.6, 0.6)
+        driver.set_led_color("RED")
+        time.sleep(5)
         if i < 3:
+            driver.set_led_color("GREEN")
             driver.rotate(math.pi/2, -0.55, 0.55, math.pi/2*0.2)
-            time.sleep(2)
+            driver.set_led_color("RED")
+            time.sleep(5)
+    
+    driver.set_led_color("WHITE")
     driver.rotate(math.pi, -0.55, 0.55)
+    driver.set_led_color("LIGHT_OFF")
