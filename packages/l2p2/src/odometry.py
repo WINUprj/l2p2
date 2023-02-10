@@ -63,27 +63,27 @@ class OdometryNode(DTROS):
         """Get the encoder data and publish the delta of distance."""
         # Set the base value of tick
         if self.orig_tick_left is None and wheel == "left":
-            self.orig_tick_left = msg.data
+            self.orig_tick_left = abs(msg.data)
         if self.orig_tick_right is None and wheel == "right":
-            self.orig_tick_right = msg.data
+            self.orig_tick_right = abs(msg.data)
         
         # Compute delta of distance on a wheel
         orig_tick = self.orig_tick_left if wheel == "left" else self.orig_tick_right
-        delta_x = 2 * math.pi * self._radius * (msg.data - orig_tick) / msg.resolution
+        delta_x = 2 * math.pi * self._radius * (abs(msg.data) - orig_tick) / msg.resolution
         delta_x *= self.left_dir if wheel == "left" else self.right_dir
-        
+                
         # Update variables and publish to the appropriate topics
         if wheel == "left":
-            self.orig_tick_left = msg.data
+            self.orig_tick_left = abs(msg.data)
             self.pub_delta_left.publish(delta_x)
         else:
-            self.orig_tick_right = msg.data
+            self.orig_tick_right = abs(msg.data)
             self.pub_delta_right.publish(delta_x)
     
     def cb_executed_commands(self, msg):
         """Get direction of rotation."""
         self.left_dir = 1 if msg.vel_left >= 0.0 else -1
-        self.right_dir = 1 if msg.vel_left >= 0.0 else -1  
+        self.right_dir = 1 if msg.vel_right >= 0.0 else -1  
 
 
 if __name__ == "__main__":
