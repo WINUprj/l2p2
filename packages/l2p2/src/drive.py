@@ -113,13 +113,26 @@ class DriverNode(DTROS):
         ----------
         pattern: str
             String representing the color. By convention, it is fully capitalized.
+        
+        Returns
+        -------
+        None
         """
         msg = String()
         msg.data = pattern
         self.srv_led(msg)
         
     def to_init_frame(self, dl, dr):
-        """Calculate coordinate w.r.t. initial robot frame."""
+        """Calculate coordinate w.r.t. initial robot frame.
+        
+        Arguments
+        ---------
+        None
+        
+        Returns
+        -------
+        None
+        """
         da = (dl + dr) / 2.
         dt = (dr - dl) / (2 * self._robot_width_half)
 
@@ -128,13 +141,31 @@ class DriverNode(DTROS):
         self.irf_t = (self.irf_t + dt) % (2. * math.pi)
 
     def to_world_frame(self):
-        """Convert the initial robot frame to world frame."""
+        """Convert the initial robot frame to world frame.
+
+        Arguments
+        ---------
+        None
+        
+        Returns
+        -------
+        None
+        """
         self.wf_x = -self.irf_y + 0.32
         self.wf_y = self.irf_x + 0.32
         self.wf_t = (self.irf_t + (math.pi / 2.)) % (2. * math.pi)
 
     def write_rosbag(self):
-        """Write all the coordinates to rosbag."""
+        """Write all the coordinates to rosbag.
+        
+        Arguments
+        ---------
+        None
+        
+        Returns
+        -------
+        None
+        """
         pose = Pose2DStamped()
         pose.header.stamp = rospy.Time.now()
 
@@ -161,6 +192,10 @@ class DriverNode(DTROS):
             Change of distance on either wheel.
         wheel: str
             Indicator of which wheel has been called. ["left", "right"]
+        
+        Returns
+        -------
+        None
         """
         assert wheel in ["left", "right"]
 
@@ -183,6 +218,10 @@ class DriverNode(DTROS):
         ---------
         msg: WheelsCmdStamped
             Velocity message that we are feeding into a topic.
+
+        Returns
+        -------
+        None
         """
         self.pub_vel.publish(msg)
         self.pub_executed_cmd.publish(msg)
@@ -206,7 +245,11 @@ class DriverNode(DTROS):
         vel_left: float
             Velocity of left wheel.
         vel_right: float
-            Velocity of right wheel.
+            Velocity of right wheel.x`
+        
+        Returns
+        -------
+        None
         """
         # assert (vel_left > 0.0 and vel_right > 0.0) or (vel_left < 0.0 and vel_right < 0.0)
         
@@ -230,6 +273,16 @@ class DriverNode(DTROS):
         self.stop()
 
     def shutdown_hook(self):
+        """Method which will be called upon the node shutdown.
+        
+        Arguments
+        ---------
+        None
+        
+        Returns
+        -------
+        None
+        """
         print("Shutting down a Driver node...")
 
         # Close rosbag file
@@ -252,17 +305,11 @@ if __name__ == "__main__":
     # driver.set_led_color("RED")
     half_ang = math.pi * driver._robot_width_half * 0.5
     ang = math.pi * driver._robot_width_half
-
-    ### Lab 2 Part 1
-    # Straight line task
-    # driver.move(1, 0.6, 0.6)
     
     ### Lab 2 Part 2
-    
     # Start timer
     st = time.time()
     
-    ### Uncomment below for running task for part 2 ###
     # State 1.
     driver.set_led_color("RED")
     time.sleep(5)
@@ -294,7 +341,7 @@ if __name__ == "__main__":
     driver.set_led_color("WHITE")
     driver.move(0.05, 0.63, 0.6)
     driver.move(2*math.pi*0.61, 0.7, 0.45)
-    
+
     print(f"Final world frame location, x: {driver.wf_x}, y: {driver.wf_y}, theta: {driver.wf_t}")
     rospy.on_shutdown(driver.shutdown_hook)
 

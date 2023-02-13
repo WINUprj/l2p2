@@ -57,7 +57,20 @@ class OdometryNode(DTROS):
         )
     
     def cb_encoder_data(self, msg, wheel):
-        """Get the encoder data and publish the delta of distance."""
+        """Get the encoder data and publish the delta of distance.
+        
+        Arguments
+        ---------
+        msg: WheelsEncoderStamped
+            Contains number of ticks obtained from either wheels.
+        wheel: str
+            Callback argument which indicates whether the method is called
+            for left or right wheel encoder.
+        
+        Returns
+        -------
+        None
+        """
         # Set the base value of tick
         if self.orig_tick_left is None and wheel == "left":
             self.orig_tick_left = abs(msg.data)
@@ -82,7 +95,17 @@ class OdometryNode(DTROS):
             self.pub_delta_right.publish(delta_x)
     
     def cb_executed_commands(self, msg):
-        """Get direction of rotation."""
+        """Get direction of rotation.
+        
+        Arguments
+        ---------
+        msg: WheelsCmdStamped
+            Contains the velocity of both wheels executed.
+        
+        Returns
+        -------
+        None
+        """
         self.left_dir = 1 if msg.vel_left >= 0.0 else -1
         self.right_dir = 1 if msg.vel_right >= 0.0 else -1  
 
